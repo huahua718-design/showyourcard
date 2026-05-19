@@ -27,7 +27,7 @@
       mask-image: linear-gradient(to bottom, black 40%, transparent 60%);
       -webkit-mask-size: 100% 250%;
       mask-size: 100% 250%;
-      animation: magicRevealWipe 3s ease-out forwards; /* 縮短為 3 秒 */
+      animation: magicRevealWipe 3s ease-out forwards;
     }
 
     /* 快速切換淡出 */
@@ -92,8 +92,12 @@
               return prev;
             });
           } else {
-            setReceivedCard(null);
-            setPhase('IDLE');
+            // 當資料庫被清空時，如果觀眾不在動畫中，就回到初始狀態
+            setReceivedCard(prev => {
+              if (prev === null) return null;
+              // 如果當前正在展示或消失動畫中，先不干擾它，讓消失動畫播完
+              return prev;
+            });
           }
         });
         return () => roomRef.off();
@@ -107,18 +111,21 @@
           tSwitch = setTimeout(() => { setImgFailed(false); setReceivedCard(pendingCardRef.current); setPhase('WAITING'); }, 1500);
         }
         if (phase === 'REVEALING') {
-          // 長按 3 秒後自動進入完全顯現階段 (REVEAL)
+          // 長按 3 秒後進入完全顯現階段
           tReveal = setTimeout(() => setPhase('REVEAL'), 3000);
-          const currentT = receivedCard?.t;
-          setTimeout(() => {
-            db.ref('twatch_rooms/' + roomId).get().then(snap => {
-              const data = snap.val();
-              if (data && data.timestamp === currentT) { db.ref('twatch_rooms/' + roomId).remove(); }
-            });
-          }, 60000); 
         }
-        if (phase === 'REVEAL') { tDismiss = setTimeout(() => setPhase('DISMISSING'), 15000); }
-        if (phase === 'DISMISSING') { tIdle = setTimeout(() => { setReceivedCard(null); setPhase('IDLE'); }, 3000); }
+        if (phase === 'REVEAL') { 
+          // 展示 15 秒後，開始進入淡出消失動畫
+          tDismiss = setTimeout(() => setPhase('DISMISSING'), 15000); 
+        }
+        if (phase === 'DISMISSING') {
+          // 3秒淡出動畫結束，卡片徹底隱形後，自動同步抹除 Firebase 資料
+          tIdle = setTimeout(() => { 
+            db.ref('twatch_rooms/' + roomId).remove(); // 滅證清空資料庫
+            setReceivedCard(null); 
+            setPhase('IDLE'); 
+          }, 3000);
+        }
 
         return () => {
           if (tSwitch) clearTimeout(tSwitch);
@@ -161,7 +168,6 @@
             setPhase('IDLE'); 
           }
           else if (phase === 'WAITING') { 
-            // 觸發顯影
             setPhase('REVEALING'); 
             if (navigator.vibrate) navigator.vibrate(20); 
           }
@@ -182,10 +188,7 @@
       };
 
       const handlePointerUp = (e) => {
-        if (isSpectator) {
-          // 移除原本放開會中斷回退的邏輯，讓撲克牌一旦觸發就繼續正常顯示
-          return;
-        }
+        if (isSpectator) return;
         
         if (!drawState.current.isDrawing) return;
         drawState.current.isDrawing = false;
@@ -262,7 +265,7 @@
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<MagicCardApp />);
+    root.render(/html> <MagicCardApp />);
   </script>
 </body>
 </html>
