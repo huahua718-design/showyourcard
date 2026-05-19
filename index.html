@@ -92,10 +92,8 @@
               return prev;
             });
           } else {
-            // 當資料庫被清空時，如果觀眾不在動畫中，就回到初始狀態
             setReceivedCard(prev => {
               if (prev === null) return null;
-              // 如果當前正在展示或消失動畫中，先不干擾它，讓消失動畫播完
               return prev;
             });
           }
@@ -111,17 +109,14 @@
           tSwitch = setTimeout(() => { setImgFailed(false); setReceivedCard(pendingCardRef.current); setPhase('WAITING'); }, 1500);
         }
         if (phase === 'REVEALING') {
-          // 長按 3 秒後進入完全顯現階段
           tReveal = setTimeout(() => setPhase('REVEAL'), 3000);
         }
         if (phase === 'REVEAL') { 
-          // 展示 15 秒後，開始進入淡出消失動畫
           tDismiss = setTimeout(() => setPhase('DISMISSING'), 15000); 
         }
         if (phase === 'DISMISSING') {
-          // 3秒淡出動畫結束，卡片徹底隱形後，自動同步抹除 Firebase 資料
           tIdle = setTimeout(() => { 
-            db.ref('twatch_rooms/' + roomId).remove(); // 滅證清空資料庫
+            db.ref('twatch_rooms/' + roomId).remove(); 
             setReceivedCard(null); 
             setPhase('IDLE'); 
           }, 3000);
@@ -144,9 +139,7 @@
         if (strokes.length < 2) return;
         const s1 = strokes[0], s2 = strokes[1];
         
-        // 0(上)=紅磚13, 1(右)=紅心26, 2(下)=黑桃39, 3(左)=梅花0
         let suitBase = [13, 26, 39, 0][s1.edge];
-        
         let isSecondHalf = (s1.dir === -1);
         let finalIndex = (s2.edge === s1.edge) ? suitBase + 12 : suitBase + (isSecondHalf ? 6 : 0) + ((s2.edge - s1.edge + 4) % 4 - 1) * 2 + (s2.dir === 1 ? 0 : 1);
         
@@ -265,7 +258,7 @@
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(/html> <MagicCardApp />);
+    root.render(<MagicCardApp />);
   </script>
 </body>
 </html>
