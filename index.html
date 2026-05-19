@@ -7,7 +7,7 @@
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com-react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -129,12 +129,11 @@
           .then(() => { setFlash(true); setTimeout(() => setFlash(false), 400); });
       };
 
-      // --- 修改後的心靈撲克演算法邏輯 ---
       const calculateSenderCard = (strokes) => {
         if (strokes.length < 2) return;
         const s1 = strokes[0], s2 = strokes[1];
         
-        // 修正後的邊緣花色映射：0(上)=紅磚13, 1(右)=紅心26, 2(下)=黑桃39, 3(左)=梅花0
+        // 0(上)=紅磚13, 1(右)=紅心26, 2(下)=黑桃39, 3(左)=梅花0
         let suitBase = [13, 26, 39, 0][s1.edge];
         
         let isSecondHalf = (s1.dir === -1);
