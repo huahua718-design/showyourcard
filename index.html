@@ -16,7 +16,7 @@
   <style>
     body { background-color: #000; margin: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
     
-    /* 5秒緩慢顯影動畫 */
+    /* 3秒緩慢顯影動畫 */
     @keyframes magicRevealWipe {
       0% { -webkit-mask-position: 0% 100%; mask-position: 0% 100%; filter: blur(12px) brightness(2); opacity: 0; }
       20% { opacity: 0.5; }
@@ -27,7 +27,7 @@
       mask-image: linear-gradient(to bottom, black 40%, transparent 60%);
       -webkit-mask-size: 100% 250%;
       mask-size: 100% 250%;
-      animation: magicRevealWipe 5s ease-out forwards; /* 縮短為 5 秒 */
+      animation: magicRevealWipe 3s ease-out forwards; /* 縮短為 3 秒 */
     }
 
     /* 快速切換淡出 */
@@ -107,8 +107,8 @@
           tSwitch = setTimeout(() => { setImgFailed(false); setReceivedCard(pendingCardRef.current); setPhase('WAITING'); }, 1500);
         }
         if (phase === 'REVEALING') {
-          // 長按顯影倒數變更為 5 秒，按滿 5 秒進入完全顯現階段 (REVEAL)
-          tReveal = setTimeout(() => setPhase('REVEAL'), 5000);
+          // 長按 3 秒後自動進入完全顯現階段 (REVEAL)
+          tReveal = setTimeout(() => setPhase('REVEAL'), 3000);
           const currentT = receivedCard?.t;
           setTimeout(() => {
             db.ref('twatch_rooms/' + roomId).get().then(snap => {
@@ -161,7 +161,7 @@
             setPhase('IDLE'); 
           }
           else if (phase === 'WAITING') { 
-            // 觀眾按下螢幕瞬間：啟動顯影階段與輕微震動
+            // 觸發顯影
             setPhase('REVEALING'); 
             if (navigator.vibrate) navigator.vibrate(20); 
           }
@@ -183,10 +183,7 @@
 
       const handlePointerUp = (e) => {
         if (isSpectator) {
-          // 觀眾放開手指機制：如果在 5 秒顯影途中提早放開，立刻中斷並回退到等待長按狀態
-          if (phase === 'REVEALING') {
-            setPhase('WAITING');
-          }
+          // 移除原本放開會中斷回退的邏輯，讓撲克牌一旦觸發就繼續正常顯示
           return;
         }
         
@@ -220,7 +217,6 @@
           >
             {phase === 'INIT' && <div className="text-white/10 text-xs tracking-widest animate-pulse">CONNECTING...</div>}
             
-            {/* 提示文字更新為神祕的 PRESS & HOLD */}
             {phase === 'WAITING' && <div className="text-white/20 text-sm border border-white/5 px-8 py-4 rounded-full animate-pulse cursor-pointer tracking-widest">PRESS & HOLD</div>}
             
             {receivedCard && (phase === 'REVEALING' || phase === 'REVEAL' || phase === 'DISMISSING' || phase === 'SWITCHING') && (
