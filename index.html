@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>超自然心靈撲克 </title>
+  <title>超自然心靈撲克 (90%大尺寸版)</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -16,7 +16,7 @@
   <style>
     body { background-color: #000; margin: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
     
-    /* 10秒緩慢顯影 */
+    /* 5秒緩慢顯影動畫 */
     @keyframes magicRevealWipe {
       0% { -webkit-mask-position: 0% 100%; mask-position: 0% 100%; filter: blur(12px) brightness(2); opacity: 0; }
       20% { opacity: 0.5; }
@@ -27,7 +27,7 @@
       mask-image: linear-gradient(to bottom, black 40%, transparent 60%);
       -webkit-mask-size: 100% 250%;
       mask-size: 100% 250%;
-      animation: magicRevealWipe 10s ease-out forwards;
+      animation: magicRevealWipe 5s ease-out forwards; /* 縮短為 5 秒 */
     }
 
     /* 快速切換淡出 */
@@ -91,6 +91,9 @@
               if (prev.t !== newCard.t) { pendingCardRef.current = newCard; setPhase('SWITCHING'); return prev; }
               return prev;
             });
+          } else {
+            setReceivedCard(null);
+            setPhase('IDLE');
           }
         });
         return () => roomRef.off();
@@ -104,7 +107,8 @@
           tSwitch = setTimeout(() => { setImgFailed(false); setReceivedCard(pendingCardRef.current); setPhase('WAITING'); }, 1500);
         }
         if (phase === 'REVEALING') {
-          tReveal = setTimeout(() => setPhase('REVEAL'), 10000);
+          // 長按顯影倒數變更為 5 秒，按滿 5 秒進入完全顯現階段 (REVEAL)
+          tReveal = setTimeout(() => setPhase('REVEAL'), 5000);
           const currentT = receivedCard?.t;
           setTimeout(() => {
             db.ref('twatch_rooms/' + roomId).get().then(snap => {
@@ -150,21 +154,43 @@
         const now = Date.now();
         const isDoubleTap = now - lastTapTime.current < 400;
         lastTapTime.current = now;
+        
         if (isSpectator) {
-          if (phase === 'INIT') { if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{}); setPhase('IDLE'); }
-          else if (phase === 'WAITING') { setPhase('REVEALING'); if (navigator.vibrate) navigator.vibrate(20); }
+          if (phase === 'INIT') { 
+            if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{}); 
+            setPhase('IDLE'); 
+          }
+          else if (phase === 'WAITING') { 
+            // 觀眾按下螢幕瞬間：啟動顯影階段與輕微震動
+            setPhase('REVEALING'); 
+            if (navigator.vibrate) navigator.vibrate(20); 
+          }
           return;
         }
+        
         if (isDoubleTap) {
-          if (phase === 'QR_CODE') setPhase('INPUT');
-          else if (phase === 'INPUT') sendCard({ icon: '🃏', color: 'text-slate-900', value: 'JOKER', imageUrl: './cards/joker_black.png' });
+          if (phase === 'QR_CODE') {
+            db.ref('twatch_rooms/' + roomId).remove();
+            setPhase('INPUT');
+          }
+          else if (phase === 'INPUT') {
+            sendCard({ icon: '🃏', color: 'text-slate-900', value: 'JOKER', imageUrl: './cards/joker_black.png' });
+          }
           return;
         }
         if (phase === 'INPUT') drawState.current = { isDrawing: true, startX: e.clientX, startY: e.clientY };
       };
 
       const handlePointerUp = (e) => {
-        if (isSpectator || !drawState.current.isDrawing) return;
+        if (isSpectator) {
+          // 觀眾放開手指機制：如果在 5 秒顯影途中提早放開，立刻中斷並回退到等待長按狀態
+          if (phase === 'REVEALING') {
+            setPhase('WAITING');
+          }
+          return;
+        }
+        
+        if (!drawState.current.isDrawing) return;
         drawState.current.isDrawing = false;
         const dx = e.clientX - drawState.current.startX, dy = e.clientY - drawState.current.startY;
         if (Math.sqrt(dx*dx + dy*dy) > 30) {
@@ -185,9 +211,17 @@
 
       if (isSpectator) {
         return (
-          <div className="w-screen h-screen bg-black flex items-center justify-center relative overflow-hidden" onPointerDown={handlePointerDown}>
+          <div 
+            className="w-screen h-screen bg-black flex items-center justify-center relative overflow-hidden" 
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          >
             {phase === 'INIT' && <div className="text-white/10 text-xs tracking-widest animate-pulse">CONNECTING...</div>}
-            {phase === 'WAITING' && <div className="text-white/20 text-sm border border-white/5 px-8 py-4 rounded-full animate-pulse cursor-pointer">TAP TO REVEAL</div>}
+            
+            {/* 提示文字更新為神祕的 PRESS & HOLD */}
+            {phase === 'WAITING' && <div className="text-white/20 text-sm border border-white/5 px-8 py-4 rounded-full animate-pulse cursor-pointer tracking-widest">PRESS & HOLD</div>}
             
             {receivedCard && (phase === 'REVEALING' || phase === 'REVEAL' || phase === 'DISMISSING' || phase === 'SWITCHING') && (
               <div className={`relative transition-all duration-1000 ${phase === 'REVEALING' ? 'animate-magic-reveal' : ''} ${phase === 'SWITCHING' ? 'animate-fade-out-quick' : ''} ${phase === 'DISMISSING' ? 'animate-final-dismiss' : ''}`}>
